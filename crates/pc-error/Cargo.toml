@@ -1,0 +1,27 @@
+[package]
+name = "pc-error"
+description = "Shared error vocabulary: one Code enum that maps to HTTP status, exit codes, and retry policy."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[features]
+default = []
+# Map `Code` onto `http::StatusCode`. Enable in services, not in CLIs.
+http = ["dep:http"]
+# Serialize `Code` as its stable machine string.
+serde = ["dep:serde"]
+
+[dependencies]
+http = { workspace = true, optional = true }
+serde = { workspace = true, optional = true }
+
+[dev-dependencies]
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+
+[lints]
+workspace = true

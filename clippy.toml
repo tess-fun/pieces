@@ -1,0 +1,11 @@
+# The workspace forbids `unwrap`/`expect`/`print!` in shipped code. Tests are
+# the one place where panicking on a broken assumption is the correct move.
+allow-unwrap-in-tests = true
+allow-expect-in-tests = true
+allow-panic-in-tests = true
+allow-print-in-tests = true
+allow-dbg-in-tests = true
+
+# Every public item that can fail should say so; keep the bar low enough that
+# small helpers don't need essays.
+too-many-arguments-threshold = 8

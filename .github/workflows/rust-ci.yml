@@ -1,0 +1,134 @@
+# Reusable CI for every Rust repo in the stack.
+#
+# Call it from a project with:
+#
+#   jobs:
+#     ci:
+#       uses: tess-fun/pieces/.github/workflows/rust-ci.yml@v0.1.0
+#
+# No secrets needed: `pieces` is a public repo, so cargo clones it without
+# credentials even though your project is private.
+#
+# Pinning the same tag the project already uses for its `pieces` dependencies
+# means CI and the libraries move together — one bump, not two.
+name: rust-ci
+
+on:
+  workflow_call:
+    inputs:
+      run-audit:
+        description: "Run cargo-deny (licenses, advisories, banned crates, sources)."
+        type: boolean
+        default: true
+      all-features:
+        description: "Build and test with --all-features."
+        type: boolean
+        default: true
+      os:
+        description: "Runner image."
+        type: string
+        default: ubuntu-latest
+    secrets:
+      stack-token:
+        description: >
+          Only needed if this repo depends on a PRIVATE git repo. `pieces`
+          itself is public, so projects that depend on it alone can omit this
+          entirely. Kept because a project's default GITHUB_TOKEN is scoped to
+          its own repo and cannot clone any other private repo — the day you
+          add a private crate, this is the hook.
+        required: false
+
+env:
+  CARGO_TERM_COLOR: always
+  # Private repos bill Actions minutes. Incremental artifacts are pure waste in
+  # a fresh container and make the cache bigger and slower.
+  CARGO_INCREMENTAL: 0
+
+jobs:
+  lint:
+    runs-on: ${{ inputs.os }}
+    env:
+      # `secrets` is not available in `if:` conditions — it has to come through
+      # `env` first. This is the documented workaround, not a style choice.
+      STACK_TOKEN: ${{ secrets.stack-token }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Authenticate private git dependencies
+        # Skipped unless the caller passes stack-token. `pieces` is public, so
+        # a project depending only on it never needs this.
+        if: env.STACK_TOKEN != ''
+        run: |
+          git config --global \
+            url."https://x-access-token:${STACK_TOKEN}@github.com/".insteadOf \
+            "https://github.com/"
+      # `rustup show` installs whatever rust-toolchain.toml pins, components
+      # included. No action needed, and no second place to bump the version.
+      - run: rustup show
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: stack
+      - name: Format
+        run: cargo fmt --all -- --check
+      - name: Clippy
+        # `-D warnings` goes here, not in RUSTFLAGS: as an env var it would
+        # also apply to every dependency and fail on warnings you cannot fix.
+        run: cargo clippy --workspace ${{ inputs.all-features && '--all-features' || '' }} --all-targets -- -D warnings
+
+  test:
+    runs-on: ${{ inputs.os }}
+    env:
+      STACK_TOKEN: ${{ secrets.stack-token }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Authenticate private git dependencies
+        if: env.STACK_TOKEN != ''
+        run: |
+          git config --global \
+            url."https://x-access-token:${STACK_TOKEN}@github.com/".insteadOf \
+            "https://github.com/"
+      - run: rustup show
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: stack
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-nextest
+      - name: Test
+        run: cargo nextest run --workspace ${{ inputs.all-features && '--all-features' || '' }}
+      - name: Doctests
+        # nextest does not run doctests, and doctests are the examples in your
+        # public API docs — a broken one is broken documentation.
+        run: cargo test --workspace ${{ inputs.all-features && '--all-features' || '' }} --doc
+
+  audit:
+    if: inputs.run-audit
+    runs-on: ${{ inputs.os }}
+    env:
+      STACK_TOKEN: ${{ secrets.stack-token }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Authenticate private git dependencies
+        if: env.STACK_TOKEN != ''
+        run: |
+          git config --global \
+            url."https://x-access-token:${STACK_TOKEN}@github.com/".insteadOf \
+            "https://github.com/"
+      - run: rustup show
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-deny
+      - run: cargo deny check
+
+  no-local-patch:
+    # `just link` appends a [patch] block pointing at a local pieces checkout.
+    # It is very easy to commit by accident, and when you do, CI silently tests
+    # code that is not what will be built.
+    runs-on: ${{ inputs.os }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Reject committed local path overrides
+        run: |
+          if grep -rn --include=Cargo.toml --exclude-dir=target '^\[patch\.' .; then
+            echo "::error::a [patch] block is committed — run 'just unlink'"
+            exit 1
+          fi

@@ -1,0 +1,17 @@
+[package]
+name = "pc-testkit"
+description = "Test-only helpers: idempotent tracing capture, filesystem sandboxes, deterministic ids and clocks."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+tempfile = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+
+[lints]
+workspace = true

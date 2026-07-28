@@ -1,0 +1,62 @@
+# pieces
+
+The shared Rust foundation. Every project depends on a tagged version of this
+repo rather than reinventing error handling, config, and telemetry.
+
+[STACK.md](STACK.md) is the design document — the full crate map, the repo
+topology, and what deliberately does *not* live here yet.
+
+## Crates
+
+| Crate | What it gives you |
+|---|---|
+| [`pc-error`](crates/pc-error) | One `Code` vocabulary that maps to HTTP status, exit status, and retry policy |
+| [`pc-config`](crates/pc-config) | Layered config with fixed precedence, plus a `Secret` that cannot leak |
+| [`pc-telemetry`](crates/pc-telemetry) | One-line `tracing` setup: TTY-aware format, `RUST_LOG`, panic capture |
+| [`pc-testkit`](crates/pc-testkit) | Test-only: tracing capture, filesystem sandbox, deterministic ids and clock |
+
+## Using it from a project
+
+```toml
+[dependencies]
+pc-config = { git = "https://github.com/tess-fun/pieces", tag = "v0.1.0" }
+pc-error = { git = "https://github.com/tess-fun/pieces", tag = "v0.1.0" }
+pc-telemetry = { git = "https://github.com/tess-fun/pieces", tag = "v0.1.0" }
+```
+
+Keep every `pieces` crate on the **same tag**. Mixing tags puts two
+incompatible copies of `pc-error` in the graph, and the resulting trait
+mismatch errors do not mention versions at all.
+
+This repo is public so that private projects can depend on it with no
+credentials at all — see
+[STACK.md § Public stack, private projects](STACK.md#public-stack-private-projects).
+CI for a consuming project is one job:
+
+```yaml
+jobs:
+  ci:
+    uses: tess-fun/pieces/.github/workflows/rust-ci.yml@v0.1.0
+```
+
+## Working on it
+
+```bash
+just setup   # install cargo-nextest, cargo-deny, cargo-shear, bacon
+just         # list every task
+just ci      # exactly what CI runs
+```
+
+To iterate on a `pieces` crate from inside a project, run `just link` in the
+project — it points the dependency at your local checkout. `just unlink`
+before committing; CI rejects a committed `[patch]` block.
+
+## Releasing
+
+```bash
+just release 0.2.0
+git push origin main --tags
+```
+
+Consumers move when they bump their tag, never before. That is the point: a
+change here cannot break a project that has not opted in.

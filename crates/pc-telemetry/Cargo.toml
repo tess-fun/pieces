@@ -1,0 +1,23 @@
+[package]
+name = "pc-telemetry"
+description = "One-line tracing setup: TTY-aware formatting, RUST_LOG, and a panic hook that reaches your logs."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+pc-error = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+
+
+[dev-dependencies]
+serde_json = { workspace = true }
+
+[lints]
+workspace = true

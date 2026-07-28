@@ -1,0 +1,16 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# One run per ref. A superseded push has nothing worth finishing.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    # pieces has no dependency on itself, so no stack-token is needed here.
+    uses: ./.github/workflows/rust-ci.yml
