@@ -63,9 +63,14 @@ before committing; CI rejects a committed `[patch]` block.
 ## Releasing
 
 ```bash
-just release 0.2.0
+# 1. add a `## [0.3.0]` section to CHANGELOG.md, stating whether it breaks
+# 2. then:
+just release 0.3.0
 git push origin main --tags
 ```
+
+`just release` refuses to tag without a matching changelog section, bumps the
+workspace version and the templates' pinned tag, then commits and tags.
 
 Consumers move when they bump their tag, never before. That is the point: a
 change here cannot break a project that has not opted in.

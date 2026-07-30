@@ -59,6 +59,11 @@ release version:
         echo "working tree is dirty; commit or stash first" >&2
         exit 1
     fi
+    if ! grep -q '^## \[{{version}}\]' CHANGELOG.md; then
+        echo "CHANGELOG.md has no '## [{{version}}]' section" >&2
+        echo "a changelog nobody is forced to update is worse than none" >&2
+        exit 1
+    fi
     # [workspace.package] version, and the version= on every internal path dep.
     perl -0pi -e 's/(\[workspace\.package\]\nversion = ")[^"]+/${1}{{version}}/' Cargo.toml
     perl -pi -e 's/^(pc-[a-z]+ = \{ path = "crates\/pc-[a-z]+", version = ")[^"]+/${1}{{version}}/' Cargo.toml

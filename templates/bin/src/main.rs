@@ -35,8 +35,8 @@ fn run(args: &Args) -> Result<(), Report> {
     // `--print-config` must work before telemetry, since a broken telemetry
     // config is one of the things you would use it to diagnose.
     if matches!(args.command, Command::PrintConfig) {
-        let rendered = pc_config::to_redacted_json(&PrintableConfig::from(&config))
-            .context("could not render configuration")?;
+        let rendered =
+            pc_config::to_redacted_json(&config).context("could not render configuration")?;
         println!("{rendered}");
         return Ok(());
     }
@@ -61,23 +61,4 @@ fn execute(config: &config::Config) -> Result<(), Report> {
 
     tracing::info!("done");
     Ok(())
-}
-
-/// `Config` only derives `Deserialize`, so this is the serializable view used
-/// by `--print-config`. `Secret` redacts itself, so this is safe to print.
-#[derive(serde::Serialize)]
-struct PrintableConfig<'a> {
-    workers: usize,
-    api_key: &'a pc_config::Secret,
-    telemetry: &'a pc_telemetry::Config,
-}
-
-impl<'a> From<&'a config::Config> for PrintableConfig<'a> {
-    fn from(c: &'a config::Config) -> Self {
-        Self {
-            workers: c.workers,
-            api_key: &c.api_key,
-            telemetry: &c.telemetry,
-        }
-    }
 }

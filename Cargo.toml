@@ -13,8 +13,14 @@ license = "MIT OR Apache-2.0"
 repository = "https://github.com/tess-fun/pieces"
 authors = ["tess-fun"]
 
-# Single source of truth for every third-party version in the stack.
-# Crates refer to these with `dep = { workspace = true }` — never a bare version.
+# Single source of truth for every third-party version in the stack. Crates
+# refer to these with `dep = { workspace = true }` — never a bare version.
+#
+# Only list what a crate actually uses. An entry no crate depends on is never
+# resolved, so its version silently drifts out of step with the real graph: the
+# `toml = "0.9"` that used to sit here would have collided with the 0.8 that
+# figment already pulls, and the first crate to opt in would have tripped
+# cargo-deny's multiple-versions check for no reason.
 [workspace.dependencies]
 # --- internal ---
 pc-error = { path = "crates/pc-error", version = "0.2.1" }
@@ -24,10 +30,8 @@ pc-testkit = { path = "crates/pc-testkit", version = "0.2.1" }
 
 # --- foundation ---
 thiserror = "2"
-anyhow = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-toml = "0.9"
 figment = { version = "0.10", features = ["toml", "env"] }
 zeroize = { version = "1", features = ["derive"] }
 http = "1"
@@ -39,7 +43,6 @@ tracing-subscriber = { version = "0.3", features = [
   "registry",
 ] }
 directories = "6"
-camino = { version = "1", features = ["serde1"] }
 
 # --- testing ---
 tempfile = "3"

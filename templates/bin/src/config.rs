@@ -12,7 +12,11 @@ use serde::{Deserialize, Serialize};
 use crate::cli::Args;
 
 /// The resolved configuration.
-#[derive(Debug, Deserialize)]
+///
+/// `Serialize` is derived so `--print-config` can render this directly. That is
+/// safe because [`Secret`] redacts itself in its own `Serialize` impl — there is
+/// no separate "printable" mirror of this struct to keep in sync.
+#[derive(Debug, Deserialize, Serialize)]
 pub(crate) struct Config {
     /// How much work to do at once.
     pub(crate) workers: usize,
