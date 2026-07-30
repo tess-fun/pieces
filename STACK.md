@@ -22,19 +22,19 @@ tess-fun/
 │   │   ├── pc-cli/
 │   │   ├── pc-store/
 │   │   └── pc-app/
+│   ├── templates/           # cargo-generate templates — bin, lib
 │   └── .github/workflows/
 │       └── rust-ci.yml      # reusable workflow, called by every project
-├── templates/               # cargo-generate templates (service / cli / app / lib)
 └── project-a/               # consumer. git dep on pieces @ tag.
     project-b/
 ```
 
-**Why the reusable workflow lives in `pieces` and not a separate `.github`
-repo:** a project pins `pieces` at a tag for its crates anyway. Putting the
-workflow at that same tag means CI and the libraries move together — one bump,
-not two — and there is no fourth repo to keep in sync. A standalone `.github`
-repo only earns its keep once you have non-Rust repos that need the same
-workflows.
+**Why the templates and the reusable workflow live in `pieces` rather than
+their own repos:** a project pins `pieces` at a tag for its crates anyway. Putting the
+workflow and the templates at that same tag means CI, the templates, and the
+libraries all move together — one bump, not three — and there is no extra repo
+to keep in sync. Separate repos only earn their keep once you have non-Rust
+projects that need the same workflows.
 
 **Why one repo for all libs, not one repo per lib:** atomic cross-crate refactors,
 one CI, one version tag, one `cargo update`. The cost — you can't version
@@ -310,7 +310,7 @@ This layer is worth more than any library. Build it first.
 
 | Tool | Purpose |
 |---|---|
-| `cargo-generate` | `cargo generate tess-fun/templates service` → running project |
+| `cargo-generate` | `cargo generate --git .../pieces templates/bin` → running project |
 | `just` | Task runner. `just test`, `just lint`, `just link`, `just release` |
 | `cargo-nextest` | Faster, better test output, real per-test isolation |
 | `bacon` | Background `cargo check` on save (replaces `cargo-watch`) |
@@ -366,16 +366,24 @@ Fix the workflow once; every project picks it up on its next tag bump.
 The failure mode here is building all of the above before writing a real
 project, and encoding guesses as API. Concretely:
 
-1. **Now** — `pieces` repo with `pc-error`, `pc-config`, `pc-telemetry`,
-   `pc-testkit`. Plus the whole of Layer 3. Tag `v0.1.0`.
-2. **Now** — one `cargo-generate` template (`lib`), the reusable CI workflow,
-   the `Justfile`. This is the compounding part.
-3. **Project #1** — build it normally. Anything reusable stays *in the project*.
+1. ~~`pieces` with `pc-error`, `pc-config`, `pc-telemetry`, `pc-testkit`, plus
+   the whole of Layer 3.~~ **Done — `v0.1.0`.**
+2. ~~The `cargo-generate` templates, the reusable CI workflow, the `Justfile`.~~
+   **Done — `v0.2.0`.** This is the compounding part.
+3. **Project #1** — `cargo generate ... templates/bin`, then build it normally.
+   Anything reusable stays *in the project*.
 4. **Project #2** — when you reach for something you wrote in #1, *then* extract
-   it to `pieces` and add the domain template. Rule of three for anything
+   it to `pieces` and add a domain template. Rule of three for anything
    opinionated.
 5. Layer 1 kits emerge from steps 3–4. They will be better for having had two
    real consumers first.
+
+Building the `bin` template was itself step 2's real payoff: as the first
+consumer of Layer 0 it immediately exposed a missing piece — there was no
+ergonomic way to get a `Coded` error through a `?`, because a blanket
+`From<E> for Report` collides with core's reflexive impl. That became
+`pc_error::ResultExt` (`.classify()` / `.context(..)`) in `v0.2.0`. Two more
+consumers will find two more of those.
 
 Layer 0 is exempt from rule-of-three because error/config/telemetry shape is
 knowable in advance and every project needs all three on day one.

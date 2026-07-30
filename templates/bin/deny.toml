@@ -1,0 +1,47 @@
+[graph]
+all-features = true
+
+[advisories]
+version = 2
+yanked = "deny"
+# Add specific RUSTSEC ids here with a comment saying why and when to revisit.
+ignore = []
+
+[licenses]
+version = 2
+# Permissive only. Anything copyleft in a dependency of a private product is a
+# decision, not an accident — make it explicitly here.
+allow = [
+  "MIT",
+  "Apache-2.0",
+  "Apache-2.0 WITH LLVM-exception",
+  "BSD-2-Clause",
+  "BSD-3-Clause",
+  "ISC",
+  "Unicode-3.0",
+  "Zlib",
+  "CC0-1.0",
+  "MPL-2.0",
+]
+confidence-threshold = 0.9
+
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+# Crates that should never appear in the graph.
+# Nothing banned yet. The pattern, for when you need it:
+#
+#   deny = [
+#     # `jiff` is the stack's one datetime type; two of them means constant
+#     # conversion at every boundary. `wrappers` lets a transitive dep through.
+#     { name = "chrono", wrappers = ["some-unavoidable-dep"] },
+#   ]
+deny = []
+skip = []
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+# Your own private repos are the only git sources allowed.
+allow-git = ["https://github.com/tess-fun/pieces"]
+# Add any further private git sources here as you introduce them.

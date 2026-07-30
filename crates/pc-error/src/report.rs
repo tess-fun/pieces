@@ -202,9 +202,54 @@ impl<'a> Iterator for Chain<'a> {
 
 impl std::iter::FusedIterator for Chain<'_> {}
 
+/// Turn any [`Coded`] error into a [`Report`] at a `?` boundary.
+///
+/// A blanket `impl<E: Coded> From<E> for Report` would be nicer, but it
+/// collides with the reflexive `From<Report> for Report` in core. An extension
+/// trait gets the same ergonomics without the coherence fight.
+pub trait ResultExt<T> {
+    /// Adopt the error's own classification and message.
+    ///
+    /// ```
+    /// # use pc_error::{Code, Coded, Report, ResultExt as _};
+    /// # #[derive(Debug, thiserror::Error)] #[error("nope")] struct E;
+    /// # impl Coded for E { fn code(&self) -> Code { Code::Forbidden } }
+    /// let r: Result<(), Report> = Err(E).classify();
+    /// assert_eq!(r.unwrap_err().code(), Code::Forbidden);
+    /// ```
+    ///
+    /// # Errors
+    /// Propagates the receiver's error, reclassified.
+    fn classify(self) -> Result<T, Report>;
+
+    /// Adopt the classification but prepend your own message, keeping the
+    /// original as the cause.
+    ///
+    /// Use when the error alone would not tell you *what you were doing* —
+    /// "no such file" is far less useful than "could not load config: no such
+    /// file".
+    ///
+    /// # Errors
+    /// Propagates the receiver's error, reclassified and annotated.
+    fn context(self, message: impl Into<Cow<'static, str>>) -> Result<T, Report>;
+}
+
+impl<T, E> ResultExt<T> for core::result::Result<T, E>
+where
+    E: Coded + StdError + Send + Sync + 'static,
+{
+    fn classify(self) -> Result<T, Report> {
+        self.map_err(Report::wrap)
+    }
+
+    fn context(self, message: impl Into<Cow<'static, str>>) -> Result<T, Report> {
+        self.map_err(|err| Report::new(err.code(), message).with_source(err))
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{Coded, Report};
+    use super::{Coded, Report, ResultExt as _};
     use crate::Code;
 
     #[derive(Debug, thiserror::Error)]
@@ -266,6 +311,30 @@ mod tests {
         assert_eq!(Report::not_found("x").code(), Code::NotFound);
         assert_eq!(Report::forbidden("x").code(), Code::Forbidden);
         assert_eq!(Report::timeout("x").code(), Code::Timeout);
+    }
+
+    #[test]
+    fn classify_adopts_code_and_message() {
+        let r: Result<(), Report> = Err(RowMissing(4)).classify();
+        let err = r.unwrap_err();
+        assert_eq!(err.code(), Code::NotFound);
+        assert_eq!(err.chained(), "row 4 is missing");
+    }
+
+    #[test]
+    fn context_prepends_while_keeping_the_code_and_cause() {
+        let r: Result<(), Report> = Err(RowMissing(4)).context("could not load user");
+        let err = r.unwrap_err();
+        assert_eq!(err.code(), Code::NotFound, "context must not reclassify");
+        assert_eq!(err.chained(), "could not load user: row 4 is missing");
+    }
+
+    #[test]
+    fn ok_passes_through_both_adapters() {
+        let a: Result<u8, Report> = Ok::<u8, RowMissing>(1).classify();
+        let b: Result<u8, Report> = Ok::<u8, RowMissing>(2).context("x");
+        assert_eq!(a.unwrap(), 1);
+        assert_eq!(b.unwrap(), 2);
     }
 
     #[test]

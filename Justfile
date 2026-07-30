@@ -62,6 +62,8 @@ release version:
     # [workspace.package] version, and the version= on every internal path dep.
     perl -0pi -e 's/(\[workspace\.package\]\nversion = ")[^"]+/${1}{{version}}/' Cargo.toml
     perl -pi -e 's/^(pc-[a-z]+ = \{ path = "crates\/pc-[a-z]+", version = ")[^"]+/${1}{{version}}/' Cargo.toml
+    # Templates pin a pieces tag; a release should hand out the new one.
+    perl -pi -e 's/^(default = ")v[0-9.]+/${1}v{{version}}/' templates/*/cargo-generate.toml
     cargo check --workspace --quiet
     git commit -am "release v{{version}}"
     git tag -a "v{{version}}" -m "v{{version}}"

@@ -1,0 +1,16 @@
+[template]
+description = "A library crate: pieces lints, CI, and a Coded error enum already wired."
+cargo_generate_version = ">=0.20.0"
+# Copied verbatim: `just` uses {{...}} for its own variables and Liquid would
+# eat them. Consequence: no placeholders may appear in the Justfile.
+exclude = ["Justfile"]
+
+[placeholders.description]
+type = "string"
+prompt = "One-line description of what this library does"
+default = "A library."
+
+[placeholders.stack_tag]
+type = "string"
+prompt = "pieces tag to depend on"
+default = "v0.2.0"

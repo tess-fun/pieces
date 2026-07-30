@@ -1,0 +1,12 @@
+/target
+**/*.rs.bk
+*.pdb
+
+# Snapshot tests: review with `cargo insta review`, never commit the pending file.
+*.snap.new
+
+# Local-only overrides.
+.env
+.env.*
+!.env.example
+/config.toml

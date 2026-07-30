@@ -10,12 +10,21 @@ topology, and what deliberately does *not* live here yet.
 
 | Crate | What it gives you |
 |---|---|
-| [`pc-error`](crates/pc-error) | One `Code` vocabulary that maps to HTTP status, exit status, and retry policy |
+| [`pc-error`](crates/pc-error) | One `Code` vocabulary that maps to HTTP status, exit status, and retry policy; `ResultExt` to get there from a `?` |
 | [`pc-config`](crates/pc-config) | Layered config with fixed precedence, plus a `Secret` that cannot leak |
 | [`pc-telemetry`](crates/pc-telemetry) | One-line `tracing` setup: TTY-aware format, `RUST_LOG`, panic capture |
 | [`pc-testkit`](crates/pc-testkit) | Test-only: tracing capture, filesystem sandbox, deterministic ids and clock |
 
-## Using it from a project
+## Starting a project
+
+```bash
+cargo generate --git https://github.com/tess-fun/pieces templates/bin --name my-tool
+```
+
+See [templates/](templates) for what you get. Both templates arrive lint-clean
+and CI-wired.
+
+## Using it from an existing project
 
 ```toml
 [dependencies]

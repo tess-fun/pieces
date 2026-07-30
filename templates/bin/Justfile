@@ -1,0 +1,76 @@
+# Task runner. `just` with no arguments lists everything.
+
+default:
+    @just --list --unsorted
+
+check:
+    cargo check --all-targets
+
+test:
+    cargo nextest run
+    cargo test --doc
+
+lint:
+    cargo fmt --all -- --check
+    cargo clippy --all-targets -- -D warnings
+
+fmt:
+    cargo fmt --all
+
+# Everything CI runs, in CI's order.
+ci: lint test audit
+    @echo "ok"
+
+audit:
+    cargo deny check
+
+unused:
+    cargo shear
+
+run *ARGS:
+    cargo run -- {{ARGS}}
+
+# What configuration actually resolved to, secrets redacted. Start here when
+# behaviour differs between two machines.
+config:
+    cargo run -q -- print-config
+
+# --- working against a local pieces checkout ---
+
+# Point this project at your local pieces checkout instead of the pinned tag.
+link path="../pieces":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if grep -q '^\[patch\.' Cargo.toml; then
+        echo "already linked"
+        exit 0
+    fi
+    cat >> Cargo.toml <<EOF
+
+    # LOCAL ONLY — remove before committing. See \`just unlink\`.
+    [patch."https://github.com/tess-fun/pieces"]
+    pc-error = { path = "{{path}}/crates/pc-error" }
+    pc-config = { path = "{{path}}/crates/pc-config" }
+    pc-telemetry = { path = "{{path}}/crates/pc-telemetry" }
+    pc-testkit = { path = "{{path}}/crates/pc-testkit" }
+    EOF
+    echo "linked to {{path}}"
+
+# Remove the local patch block. CI rejects a committed one.
+unlink:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    perl -0pi -e 's/\n# LOCAL ONLY.*?\n(?=\n|\z)//s' Cargo.toml
+    echo "unlinked"
+
+# Move to a newer pieces release, e.g. `just bump-stack v0.3.0`.
+bump-stack tag:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    perl -pi -e 's{(tess-fun/pieces", tag = ")[^"]+}{${1}{{tag}}}g' Cargo.toml
+    perl -pi -e 's{(rust-ci\.yml\@)\S+}{${1}{{tag}}}' .github/workflows/ci.yml
+    cargo update -p pc-error -p pc-config -p pc-telemetry -p pc-testkit
+    echo "bumped to {{tag}}"
+
+setup:
+    cargo install cargo-nextest cargo-deny cargo-shear bacon --locked

@@ -1,0 +1,9 @@
+edition = "2024"
+style_edition = "2024"
+
+# Everything below is stable-only on purpose: nightly-gated rustfmt options
+# silently do nothing on a pinned stable toolchain, which is worse than not
+# setting them.
+max_width = 100
+use_field_init_shorthand = true
+use_try_shorthand = true

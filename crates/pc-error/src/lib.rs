@@ -49,7 +49,7 @@ mod code;
 mod report;
 
 pub use code::Code;
-pub use report::{Chain, Coded, Report};
+pub use report::{Chain, Coded, Report, ResultExt};
 
 /// `Result` with the error type fixed to [`Report`].
 ///

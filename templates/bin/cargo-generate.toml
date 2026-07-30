@@ -1,0 +1,21 @@
+[template]
+description = "A CLI binary wired to pieces layer 0: layered config, telemetry, classified exit codes."
+cargo_generate_version = ">=0.20.0"
+# Copied verbatim: `just` uses {{...}} for its own variables and Liquid
+# would eat them. Consequence: no placeholders may appear in the Justfile.
+exclude = ["Justfile"]
+
+[placeholders.description]
+type = "string"
+prompt = "One-line description of what this does"
+default = "A tool."
+
+[placeholders.stack_tag]
+type = "string"
+prompt = "pieces tag to depend on"
+default = "v0.2.0"
+
+[placeholders.env_prefix]
+type = "string"
+prompt = "Environment variable prefix (uppercase, no trailing underscore)"
+default = "APP"

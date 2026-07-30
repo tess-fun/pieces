@@ -1,0 +1,42 @@
+# Task runner. `just` with no arguments lists everything.
+
+default:
+    @just --list --unsorted
+
+check:
+    cargo check --all-features --all-targets
+
+test:
+    cargo nextest run --all-features
+    cargo test --all-features --doc
+
+lint:
+    cargo fmt --all -- --check
+    cargo clippy --all-features --all-targets -- -D warnings
+
+fmt:
+    cargo fmt --all
+
+ci: lint test audit
+    @echo "ok"
+
+audit:
+    cargo deny check
+
+unused:
+    cargo shear
+
+docs:
+    cargo doc --all-features --no-deps --open
+
+# Move to a newer pieces release, e.g. `just bump-stack v0.3.0`.
+bump-stack tag:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    perl -pi -e 's{(tess-fun/pieces", tag = ")[^"]+}{${1}{{tag}}}g' Cargo.toml
+    perl -pi -e 's{(rust-ci\.yml\@)\S+}{${1}{{tag}}}' .github/workflows/ci.yml
+    cargo update -p pc-error -p pc-testkit
+    echo "bumped to {{tag}}"
+
+setup:
+    cargo install cargo-nextest cargo-deny cargo-shear bacon --locked
