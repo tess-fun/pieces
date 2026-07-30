@@ -46,8 +46,8 @@ Revisit only if an outside consumer appears.
 ```toml
 # project-a/Cargo.toml
 [dependencies]
-pc-config    = { git = "https://github.com/tess-fun/pieces", tag = "v0.4.0" }
-pc-telemetry = { git = "https://github.com/tess-fun/pieces", tag = "v0.4.0" }
+pc-config    = { git = "https://github.com/tess-fun/pieces", tag = "v0.2.3" }
+pc-telemetry = { git = "https://github.com/tess-fun/pieces", tag = "v0.2.3" }
 ```
 
 All `pieces` crates must be on the **same tag** — mixing tags gives you two
@@ -109,7 +109,7 @@ absent. Wire it up the day you need it:
 ```yaml
 jobs:
   ci:
-    uses: tess-fun/pieces/.github/workflows/rust-ci.yml@v0.2.2
+    uses: tess-fun/pieces/.github/workflows/rust-ci.yml@v0.2.3
 ```
 
 No secrets: `pieces` is public. Pass `secrets: stack-token: …` only if the
@@ -418,7 +418,7 @@ One reusable workflow, versioned alongside the crates it builds:
 ```yaml
 jobs:
   ci:
-    uses: tess-fun/pieces/.github/workflows/rust-ci.yml@v0.2.2
+    uses: tess-fun/pieces/.github/workflows/rust-ci.yml@v0.2.3
 ```
 
 No secrets: `pieces` is public. Pass `secrets: stack-token: …` only if the

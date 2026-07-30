@@ -28,9 +28,9 @@ and CI-wired.
 
 ```toml
 [dependencies]
-pc-config = { git = "https://github.com/tess-fun/pieces", tag = "v0.1.0" }
-pc-error = { git = "https://github.com/tess-fun/pieces", tag = "v0.1.0" }
-pc-telemetry = { git = "https://github.com/tess-fun/pieces", tag = "v0.1.0" }
+pc-config = { git = "https://github.com/tess-fun/pieces", tag = "v0.2.3" }
+pc-error = { git = "https://github.com/tess-fun/pieces", tag = "v0.2.3" }
+pc-telemetry = { git = "https://github.com/tess-fun/pieces", tag = "v0.2.3" }
 ```
 
 Keep every `pieces` crate on the **same tag**. Mixing tags puts two
@@ -45,7 +45,7 @@ CI for a consuming project is one job:
 ```yaml
 jobs:
   ci:
-    uses: tess-fun/pieces/.github/workflows/rust-ci.yml@v0.1.0
+    uses: tess-fun/pieces/.github/workflows/rust-ci.yml@v0.2.3
 ```
 
 ## Working on it
