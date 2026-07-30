@@ -16,7 +16,17 @@ cargo generate --git https://github.com/tess-fun/pieces templates/lib --name my-
 | `lib` | A library crate. A `Coded` error enum and the strict lint set. |
 
 Both prompt for a description, the `pieces` tag to pin, and (for `bin`) an
-environment-variable prefix.
+environment-variable prefix. The tag default tracks the latest release
+automatically — `just release` rewrites it.
+
+Non-interactively (CI, scripts) pass `--silent` plus a `--define` for anything
+you don't want defaulted; without `--silent` it tries to prompt and fails with
+`IO error: not a terminal`:
+
+```bash
+cargo generate --git https://github.com/tess-fun/pieces templates/bin --silent \
+  --name my-tool --define description="Does the thing." --define env_prefix=MYTOOL
+```
 
 ## What `bin` gives you working on the first run
 
@@ -57,7 +67,10 @@ a template that does not compile costs more than no template. The check that
 catches real problems:
 
 ```bash
-cargo generate --path templates/bin --name scratch-check --define description="x" \
-  --define stack_tag=v0.2.0 --define env_prefix=SCRATCH
+cargo generate --path templates/bin --silent --name scratch-check \
+  --define description="x" --define env_prefix=SCRATCH
 cd scratch-check && just ci
 ```
+
+Generating from `--path` uses your working tree, so you can check a template
+before committing it. Generating from `--git` uses the last pushed commit.
