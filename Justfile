@@ -59,6 +59,7 @@ release version:
         echo "working tree is dirty; commit or stash first" >&2
         exit 1
     fi
+    cargo shear
     if ! grep -q '^## \[{{version}}\]' CHANGELOG.md; then
         echo "CHANGELOG.md has no '## [{{version}}]' section" >&2
         echo "a changelog nobody is forced to update is worse than none" >&2
@@ -69,6 +70,10 @@ release version:
     perl -pi -e 's/^(pc-[a-z]+ = \{ path = "crates\/pc-[a-z]+", version = ")[^"]+/${1}{{version}}/' Cargo.toml
     # Templates pin a pieces tag; a release should hand out the new one.
     perl -pi -e 's/^(default = ")v[0-9.]+/${1}v{{version}}/' templates/*/cargo-generate.toml
+    # So do the copy-pasteable snippets in the docs. Left to a human these rot
+    # silently, and a stale snippet is worse than none — it looks authoritative.
+    perl -pi -e 's{(tess-fun/pieces", tag = ")v[0-9.]+}{${1}v{{version}}}g' README.md STACK.md
+    perl -pi -e 's{(rust-ci\.yml\@)v[0-9.]+}{${1}v{{version}}}g' README.md STACK.md
     cargo check --workspace --quiet
     git commit -am "release v{{version}}"
     git tag -a "v{{version}}" -m "v{{version}}"
@@ -111,6 +116,7 @@ unlink:
 # --- setup ---
 
 # Install the cargo subcommands the recipes above expect. Slow the first time.
+# `just` itself is the one bootstrap prerequisite: brew install just.
 setup:
-    cargo install cargo-nextest cargo-deny cargo-shear bacon --locked
-    @echo "also useful: cargo install cargo-generate dist --locked"
+    cargo install cargo-nextest cargo-deny cargo-shear bacon cargo-generate --locked
+    @echo 'add: cargo install dist --locked   (when you start shipping binaries)'

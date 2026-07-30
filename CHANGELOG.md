@@ -10,6 +10,57 @@ break.
 
 ## Unreleased
 
+## [0.2.3] — 2026-07-30
+
+**Breaking: no.** Test coverage, documentation accuracy, and one real Justfile
+bug — all found by installing the tooling and actually running it.
+
+### Added
+
+- Five tests for `pc-error`'s `serde` feature, which had **none**. The
+  `Serialize`/`Deserialize` impls are hand-written, including an unknown-variant
+  error path, and were entirely unexercised. `cargo-shear` flagged the unused
+  `serde_json` dev-dependency, which was the symptom. One of the new tests
+  deserializes from a reader specifically to catch a regression to `&str`, which
+  would silently break every non-borrowing format.
+- `just release` now runs `cargo shear` as a gate. Not added to `just ci`,
+  because CI does not run it and that recipe claims to mirror CI exactly.
+
+### Fixed
+
+- `just setup`'s final `@echo` used backticks inside a double-quoted string,
+  making the shell *execute* `cargo install dist --locked` as command
+  substitution instead of printing it.
+- `just setup` now installs `cargo-generate`, which the documented workflow
+  requires and which it previously only mentioned.
+
+### Changed
+
+- STACK.md distinguishes **shipped** from **not yet built** per crate. It had
+  been claiming OTLP export, `insta` settings, a `#[pc_test]` macro, and a
+  `TempDb` helper — all still aspirations, none implemented. A design doc that
+  describes an API that does not exist is worse than no doc.
+- Corrected the `pc-error` description: the API is `Code::status()` and
+  `Code::exit_code()`, not `impl From<Code> for ExitCode`; the variant is
+  `Unauthenticated`, not `Unauthorized`; and binaries carry `Report` via
+  `ResultExt` rather than `anyhow`.
+- Expanded the lint guidance with the two traps: `clippy.toml`'s
+  `allow-unwrap-in-tests` and why it does not reach `tests/`, and which lints
+  are libraries-only because printing is a binary's whole job.
+- Layer 3 now separates tools in use from ones deliberately rejected
+  (`cargo-release`) and ones not yet needed (`dist`, `lefthook`, `renovate`).
+- `just release` now rewrites the pinned tag in README and STACK snippets too.
+  Left to a human those rot silently, and a stale copy-pasteable snippet is
+  worse than none because it looks authoritative.
+- `deny.toml` sets `unused-allowed-license = "allow"`. The license allowlist
+  stays deliberately broader than the current graph so a new dependency does not
+  fail the build while someone edits the file; the cost was four
+  `license-not-encountered` warnings on every run, which is exactly the noise
+  that trains you to stop reading cargo-deny output.
+- `[workspace.metadata.cargo-shear] ignored` exempts the internal `pc-*`
+  entries. No member uses them yet, but unlike a third-party entry their version
+  cannot drift — `just release` rewrites all of them in lockstep.
+
 ## [0.2.2] — 2026-07-30
 
 **Breaking: no.**
@@ -76,6 +127,7 @@ Initial release. Layer 0 and the tooling layer.
   `expect`, `clippy.toml` relaxing those in tests, `deny.toml`, `Justfile`, and
   a `workflow_call` CI definition.
 
+[0.2.3]: https://github.com/tess-fun/pieces/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/tess-fun/pieces/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/tess-fun/pieces/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/tess-fun/pieces/compare/v0.1.0...v0.2.0

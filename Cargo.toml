@@ -5,6 +5,13 @@ members = ["crates/*"]
 # cargo never sees them, but this stops a stray real one from joining.
 exclude = ["templates"]
 
+# The internal `pc-*` entries below are declared for future crates to pick up
+# with `{ workspace = true }`. cargo-shear correctly notes that no member uses
+# them yet; unlike a third-party entry their version cannot drift, because
+# `just release` rewrites all of them in lockstep.
+[workspace.metadata.cargo-shear]
+ignored = ["pc-config", "pc-telemetry", "pc-testkit"]
+
 [workspace.package]
 version = "0.2.2"
 edition = "2024"

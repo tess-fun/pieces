@@ -24,6 +24,11 @@ allow = [
   "MPL-2.0",
 ]
 confidence-threshold = 0.9
+# The allowlist stays broader than the current graph on purpose: a new
+# dependency under any of these should not fail the build while someone edits
+# this file. The cost is a `license-not-encountered` warning per unused entry,
+# which is noise that trains you to ignore cargo-deny output — so silence it.
+unused-allowed-license = "allow"
 
 [bans]
 multiple-versions = "warn"

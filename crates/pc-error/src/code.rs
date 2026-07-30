@@ -210,3 +210,62 @@ mod tests {
         }
     }
 }
+
+#[cfg(all(test, feature = "serde"))]
+mod serde_tests {
+    use super::Code;
+
+    #[test]
+    fn serializes_as_the_stable_machine_name() {
+        assert_eq!(
+            serde_json::to_string(&Code::NotFound).unwrap(),
+            "\"not_found\""
+        );
+        assert_eq!(
+            serde_json::to_string(&Code::Unauthenticated).unwrap(),
+            "\"unauthenticated\""
+        );
+    }
+
+    #[test]
+    fn round_trips_through_json_for_every_variant() {
+        for &code in Code::ALL {
+            let json = serde_json::to_string(&code).unwrap();
+            let back: Code = serde_json::from_str(&json).unwrap();
+            assert_eq!(back, code, "{json}");
+        }
+    }
+
+    #[test]
+    fn an_unknown_variant_is_rejected_rather_than_defaulted() {
+        // Silently mapping an unrecognized code to `Internal` would turn a
+        // version skew between two services into a fake 500.
+        let err = serde_json::from_str::<Code>("\"teapot\"").unwrap_err();
+        assert!(err.to_string().contains("teapot"), "{err}");
+    }
+
+    #[test]
+    fn deserializes_from_a_reader_not_just_a_borrowed_str() {
+        // The impl uses `String` rather than `&str` precisely so non-borrowing
+        // formats work. This is the test that would catch a regression to `&str`.
+        let code: Code = serde_json::from_reader(b"\"timeout\"".as_slice()).unwrap();
+        assert_eq!(code, Code::Timeout);
+    }
+
+    #[test]
+    fn nests_inside_a_struct() {
+        #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
+        struct Envelope {
+            code: Code,
+            message: String,
+        }
+
+        let original = Envelope {
+            code: Code::Exhausted,
+            message: "slow down".to_owned(),
+        };
+        let json = serde_json::to_string(&original).unwrap();
+        assert_eq!(json, r#"{"code":"exhausted","message":"slow down"}"#);
+        assert_eq!(serde_json::from_str::<Envelope>(&json).unwrap(), original);
+    }
+}

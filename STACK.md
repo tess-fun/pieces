@@ -109,10 +109,11 @@ absent. Wire it up the day you need it:
 ```yaml
 jobs:
   ci:
-    uses: tess-fun/pieces/.github/workflows/rust-ci.yml@v0.1.0
-    secrets:
-      stack-token: ${{ secrets.PIECES_TOKEN }}
+    uses: tess-fun/pieces/.github/workflows/rust-ci.yml@v0.2.2
 ```
+
+No secrets: `pieces` is public. Pass `secrets: stack-token: …` only if the
+project also depends on a private repo.
 
 ### Still worth setting locally
 
@@ -155,11 +156,11 @@ second consumer.
 | Concern | Crates | Your wrapper |
 |---|---|---|
 | Errors (libs) | `thiserror` | — |
-| Errors (bins) | `anyhow`, or `color-eyre` / `miette` for pretty reports | `pc-error` |
+| Errors (bins) | `pc_error::Report` + `ResultExt` — no `anyhow` needed; `miette` only if you want source-span diagnostics | `pc-error` |
 | Config | `figment` (layered) + `serde` | `pc-config` |
 | Logging / tracing | `tracing`, `tracing-subscriber`, `tracing-opentelemetry`, `opentelemetry-otlp` | `pc-telemetry` |
 | Metrics | `metrics` + `metrics-exporter-prometheus` | `pc-telemetry` |
-| Serialization | `serde`, `serde_json`, `toml` | — |
+| Serialization | `serde`, `serde_json` (figment already parses TOML, so you rarely need `toml` directly) | — |
 | Time | `jiff` (pick one and never mix) | — |
 | IDs | `uuid` v7, or `ulid` | — |
 | Secrets in memory | `zeroize` | `pc-config::Secret` |
@@ -168,14 +169,21 @@ second consumer.
 
 ### `pc-error`
 
-- A `Code` enum (`NotFound`, `Invalid`, `Conflict`, `Internal`, `Unauthorized`, …)
-  that is the **single vocabulary** all your errors map into.
-- `impl From<Code> for http::StatusCode` (feature-gated) and
-  `impl From<Code> for ExitCode`. This is the payoff: define the failure once,
+- A `Code` enum — `Invalid`, `Unauthenticated`, `Forbidden`, `NotFound`,
+  `Conflict`, `Exhausted`, `Unavailable`, `Timeout`, `Internal` — the **single
+  vocabulary** every error in the stack maps into.
+- `Code::status()` → `http::StatusCode` (behind the `http` feature) and
+  `Code::exit_code()` → `u8` following `sysexits.h`. Plus `is_retryable()` and
+  `is_client_fault()`, so backoff policy and alerting severity both fall out of
+  the same classification. That is the payoff: classify once at the origin, and
   every surface renders it correctly.
-- A `Report` type for user-facing rendering with a cause chain.
-- Rule: libraries return `thiserror` enums that carry a `Code`. Binaries use
-  `anyhow`/`eyre` and only translate at the boundary.
+- `Report` is the boundary type. `Display` shows only the top message (safe in
+  an API response body); `chained()` renders the whole cause chain (what you
+  log or print).
+- Rule: libraries return `thiserror` enums implementing `Coded`. Binaries carry
+  `Report` and reach it with `ResultExt::classify()` / `.context("…")`. A
+  blanket `From<E: Coded> for Report` is impossible — it collides with core's
+  reflexive `From<Report> for Report` — which is why the extension trait exists.
 
 ### `pc-config`
 
@@ -194,19 +202,42 @@ second consumer.
 
 ### `pc-telemetry`
 
-- `pc_telemetry::init(&TelemetryConfig) -> Guard`. One line in every `main`.
-- Auto-selects human-readable output on a TTY, JSON otherwise.
-- `RUST_LOG` honored; OTLP export enabled by env var, off by default.
-- Installs a panic hook that logs through `tracing` before aborting.
-- The `Guard` flushes spans on drop — otherwise you lose the last traces on exit.
+Shipped:
+
+- `pc_telemetry::init(&Config) -> Guard`. One line in every `main`.
+- Human-readable output on a TTY, JSON otherwise — so a container log is
+  structured without anyone remembering a `--log-format` flag.
+- `RUST_LOG` takes precedence over the configured filter, one-directionally, so
+  an operator can always turn logging up on a running deployment.
+- Logs to stderr, keeping stdout machine-readable for CLIs.
+- A panic hook that logs through `tracing`, with location and payload, before
+  deferring to the previous hook.
+- `Config` derives `Deserialize`, so it nests inside an app's own config struct.
+
+Not yet built:
+
+- **OTLP export.** `Guard` exists and is documented as load-bearing precisely so
+  that adding this later does not touch a single `main`. Today its drop is a
+  no-op.
+- **Metrics.** `metrics` + a Prometheus exporter, when something needs them.
 
 ### `pc-testkit`
 
-- `insta` settings (snapshot dir, redactions for UUIDs/timestamps).
-- `#[pc_test]` macro: builds a tokio runtime, initializes capture-mode telemetry,
-  loads a test config.
-- `TempDb` helper (testcontainers Postgres, migrations applied, dropped after).
-- Deterministic clock and ID generator for reproducible snapshots.
+Shipped:
+
+- `trace()` — idempotent tracing into libtest's capture buffer. Safe to call
+  from every test.
+- `Sandbox` — a self-cleaning temp dir with `write`/`read`/`path`, plus
+  `persist()` for debugging a failure.
+- `Seq` — deterministic ids, so snapshots do not change every run.
+- `Clock` — frozen time that only moves when a test moves it.
+
+Not yet built, and deliberately so — each needs a real consumer to shape it:
+
+- `insta` settings (snapshot dir, redactions for uuids/timestamps).
+- A `#[pc_test]` attribute macro (tokio runtime + telemetry + test config).
+- `TempDb` (testcontainers Postgres with migrations applied). Waits on the
+  service kit; a DB helper with no service to test is a guess.
 
 ---
 
@@ -308,38 +339,77 @@ cross-compilation tax.
 
 This layer is worth more than any library. Build it first.
 
+In use. `just setup` installs all of these; `just` itself is the one
+bootstrap prerequisite (`brew install just`).
+
 | Tool | Purpose |
 |---|---|
 | `cargo-generate` | `cargo generate --git .../pieces templates/bin` → running project |
-| `just` | Task runner. `just test`, `just lint`, `just link`, `just release` |
-| `cargo-nextest` | Faster, better test output, real per-test isolation |
+| `just` | Task runner. `just ci`, `just link`, `just release`, `just bump-stack` |
+| `cargo-nextest` | Faster, better output, real per-test process isolation |
 | `bacon` | Background `cargo check` on save (replaces `cargo-watch`) |
-| `cargo-deny` | License + advisory + duplicate-dep gate in CI |
-| `cargo-shear` | Finds unused dependencies |
-| `cargo-release` | Tag + changelog for the `pieces` workspace |
-| `dist` (`cargo-dist`) | Cross-platform binary releases + installers |
-| `lefthook` | Pre-commit fmt/clippy |
-| `renovate` | Dependency PRs against `pieces` only; projects follow via tag bump |
+| `cargo-deny` | License + advisory + banned-crate + source gate, run in CI |
+| `cargo-shear` | Finds declared-but-unused dependencies |
+
+Deliberately **not** used:
+
+- **`cargo-release`.** These crates never reach a registry, so a release is only
+  a version bump and an annotated tag. `just release` does that in plain git and
+  perl — one less tool whose CLI can change underneath you. It also refuses to
+  tag without a matching `CHANGELOG.md` section.
+
+Not yet needed, add when the situation arises:
+
+- **`dist` (formerly `cargo-dist`)** — cross-platform binary releases and
+  installers. Only once you ship a binary to someone other than yourself.
+- **`lefthook`** — pre-commit fmt/clippy. CI already blocks bad pushes; this
+  only shortens the feedback loop.
+- **`renovate`** — dependency PRs. Point it at `pieces` only and let projects
+  follow via `just bump-stack`. Renovate handles cargo git-tag deps;
+  Dependabot's coverage of them is unverified.
 
 ### Workspace-level enforcement
 
-Put this in `pieces/Cargo.toml` **and** in every project's root — this is how you
-get consistency without discipline:
+Lints declared once at the root and inherited beat lints nobody remembers to
+add. In a workspace use `[workspace.lints]` plus `[lints] workspace = true` in
+each member; in a single-crate project use `[lints]` directly. The templates
+ship the right form for each.
 
 ```toml
-[workspace.lints.rust]
+[lints.rust]
 unsafe_code = "forbid"
-missing_debug_implementations = "warn"
+missing_debug_implementations = "warn"   # libraries only
+missing_docs = "warn"                    # libraries only
+unreachable_pub = "warn"
 
-[workspace.lints.clippy]
+[lints.clippy]
 pedantic = { level = "warn", priority = -1 }
 unwrap_used = "warn"
 expect_used = "warn"
 todo = "warn"
+dbg_macro = "warn"
+print_stdout = "warn"                    # libraries only
+print_stderr = "warn"                    # libraries only
+module_name_repetitions = "allow"        # pedantic noise not worth the churn
+missing_errors_doc = "allow"
 ```
 
-Plus a pinned `rust-toolchain.toml`, a shared `rustfmt.toml`, and a
-`deny.toml`. The template ships all four.
+The "libraries only" rows matter: printing is a *binary's whole job*, so the
+`bin` template omits those two, and requiring docs on a binary's private
+internals is busywork.
+
+Two traps worth knowing:
+
+- `unwrap_used` fires in tests too. Fix it in `clippy.toml` with
+  `allow-unwrap-in-tests` (and the `expect`/`panic`/`print` equivalents), not
+  with scattered `#[allow]`.
+- That setting does **not** reach `tests/`. Integration tests compile as their
+  own crate without `cfg(test)`, so clippy's in-test detection never fires —
+  state `#![allow(clippy::unwrap_used, clippy::expect_used)]` at the top of each
+  integration test file.
+
+Plus a pinned `rust-toolchain.toml`, a shared `rustfmt.toml`, a `clippy.toml`,
+and a `deny.toml`. Both templates ship all four.
 
 ### CI
 
@@ -348,10 +418,11 @@ One reusable workflow, versioned alongside the crates it builds:
 ```yaml
 jobs:
   ci:
-    uses: tess-fun/pieces/.github/workflows/rust-ci.yml@v0.1.0
-    secrets:
-      stack-token: ${{ secrets.PIECES_TOKEN }}
+    uses: tess-fun/pieces/.github/workflows/rust-ci.yml@v0.2.2
 ```
+
+No secrets: `pieces` is public. Pass `secrets: stack-token: …` only if the
+project also depends on a private repo.
 
 Jobs: `lint` (fmt + clippy), `test` (nextest + doctests), `audit` (cargo-deny),
 and `no-local-patch` — which fails the build if a `just link` `[patch]` block
