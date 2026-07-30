@@ -6,7 +6,7 @@ members = ["crates/*"]
 exclude = ["templates"]
 
 [workspace.package]
-version = "0.2.1"
+version = "0.2.2"
 edition = "2024"
 rust-version = "1.96"
 license = "MIT OR Apache-2.0"
@@ -23,10 +23,10 @@ authors = ["tess-fun"]
 # cargo-deny's multiple-versions check for no reason.
 [workspace.dependencies]
 # --- internal ---
-pc-error = { path = "crates/pc-error", version = "0.2.1" }
-pc-config = { path = "crates/pc-config", version = "0.2.1" }
-pc-telemetry = { path = "crates/pc-telemetry", version = "0.2.1" }
-pc-testkit = { path = "crates/pc-testkit", version = "0.2.1" }
+pc-error = { path = "crates/pc-error", version = "0.2.2" }
+pc-config = { path = "crates/pc-config", version = "0.2.2" }
+pc-telemetry = { path = "crates/pc-telemetry", version = "0.2.2" }
+pc-testkit = { path = "crates/pc-testkit", version = "0.2.2" }
 
 # --- foundation ---
 thiserror = "2"
