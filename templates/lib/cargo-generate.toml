@@ -13,4 +13,4 @@ default = "A library."
 [placeholders.stack_tag]
 type = "string"
 prompt = "pieces tag to depend on"
-default = "v0.2.0"
+default = "v0.2.1"

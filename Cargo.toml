@@ -6,7 +6,7 @@ members = ["crates/*"]
 exclude = ["templates"]
 
 [workspace.package]
-version = "0.2.0"
+version = "0.2.1"
 edition = "2024"
 rust-version = "1.96"
 license = "MIT OR Apache-2.0"
@@ -17,10 +17,10 @@ authors = ["tess-fun"]
 # Crates refer to these with `dep = { workspace = true }` — never a bare version.
 [workspace.dependencies]
 # --- internal ---
-pc-error = { path = "crates/pc-error", version = "0.2.0" }
-pc-config = { path = "crates/pc-config", version = "0.2.0" }
-pc-telemetry = { path = "crates/pc-telemetry", version = "0.2.0" }
-pc-testkit = { path = "crates/pc-testkit", version = "0.2.0" }
+pc-error = { path = "crates/pc-error", version = "0.2.1" }
+pc-config = { path = "crates/pc-config", version = "0.2.1" }
+pc-telemetry = { path = "crates/pc-telemetry", version = "0.2.1" }
+pc-testkit = { path = "crates/pc-testkit", version = "0.2.1" }
 
 # --- foundation ---
 thiserror = "2"
