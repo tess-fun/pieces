@@ -30,10 +30,18 @@ environment-variable prefix.
 - `just link` / `just unlink` to develop against a local `pieces` checkout, and
   `just bump-stack v0.3.0` to move to a new release.
 
-## Two templating gotchas, already handled
+## Three templating gotchas, already handled
 
-Both files below would break if templated naively, so they are worth knowing
-about before you add more templates:
+All three would break if templated naively, so they are worth knowing about
+before you add more templates:
+
+- **The manifest is `Cargo.toml.liquid`, not `Cargo.toml`.** `cargo-generate`
+  strips the `.liquid` extension after rendering, so the generated project gets
+  a normal `Cargo.toml`. The rename exists because cargo scans every manifest
+  in a git dependency's repo, and a literal `name = "{{project-name}}"` makes it
+  print ``error: invalid character `{` in package name`` to *every consumer* on
+  every fetch. The build still succeeds, which is what makes it insidious —
+  pure noise that reads as breakage. Name any new template manifest the same way.
 
 - **`Justfile` is copied verbatim** (`exclude` in `cargo-generate.toml`). `just`
   uses `{{ }}` for its own variables and Liquid would eat them. The cost: no

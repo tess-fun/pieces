@@ -1,7 +1,8 @@
 [workspace]
 resolver = "3"
 members = ["crates/*"]
-# Template manifests contain {{placeholders}} and are not real packages.
+# Defensive: template manifests are named Cargo.toml.liquid precisely so
+# cargo never sees them, but this stops a stray real one from joining.
 exclude = ["templates"]
 
 [workspace.package]
